@@ -13,14 +13,6 @@ local CTRL = require "luci.controller.ngrokc"
 local HTTP = require "luci.http"
 local UCI  = (require "luci.model.uci").cursor()
 
-main=m:section(NamedSection, "main", "ngrokc", translate("Main Settings"))
-main.addremove=false
-main.anonymous=true
---check_periodcally=main:option(Flag, "check_periodcally", translate("Check periodically"))
-check_interval=main:option(Value, "check_interval", translate("Check interval"), translate("Second(s). Set to 0 if you don't want to check"))
-check_interval.addremove = false
---check_interval:depends("check_periodcally", "1")
-
 servers=m:section(TypedSection, "servers", translate("Servers"))
 servers.template = "cbi/tblsection"
 servers.anonymous = false
@@ -96,29 +88,21 @@ url=tunnel:option(DummyValue, "_url", translate("URL"))
 url.template = "ngrokc/overview_value"
 url.rmempty = false
 function url.set_one(self, section)
-	local urlelement
 	local servername = self.map:get(section, "server") or ""
 	local host = UCI.get("ngrokc", servername, "host") or ""
 	local tunneltype = self.map:get(section, "type") or ""
 	local dname = self.map:get(section, "dname") or ""
 	local cusdom = self.map:get(section, "custom_domain") or ""
-	local addrport = self.map:get(section, "addr_port") or ""
 	local rport = self.map:get(section, "rport") or ""
 	if tunneltype == "tcp" and rport ~= "" then
-		urlelement = "tcp://" .. host .. ":" .. rport
-	elseif (tunneltype == "http" or tunneltype == "https") and dname ~= "" then
-		if cusdom == "1" then
-			urlelement = tunneltype .. "://" .. dname
-		else
-			urlelement = tunneltype .. "://" .. dname .. "." .. string.gsub(host, "www", "")
-		end
-		if addrport == "1" and rport ~= "" then
-			urlelement = urlelement .. ":" .. rport
-		end
+		return "tcp://" .. host .. ":" .. rport 
+	elseif cusdom == "1" and dname ~= "" then
+		return tunneltype .. "://" .. dname
+	elseif dname ~= "" then
+		return tunneltype .. "://" .. dname .. "." .. string.gsub(host, "www", "")
 	else
-		urlelement = [[<em>]] .. translate("config error") .. [[</em>]]
+		return [[<em>]] .. translate("config error") .. [[</em>]]
 	end
-	return "<a href=\"" .. urlelement .. "\" target=\"_blank\">" .. urlelement .. "</a>"
 end
 
 return m
